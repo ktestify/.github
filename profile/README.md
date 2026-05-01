@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/png/ktestify-banner.png" alt="KTestify — Assert the stream. Own the pipeline." width="100%"/>
+  <img src="assets/png/ktestify-banner-2x.png" alt="KTestify — Assert the stream. Own the pipeline." width="100%"/>
 </p>
 
 <p align="center">

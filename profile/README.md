@@ -26,7 +26,6 @@
 The foundation library. A fluent Java API for testing Kafka producers, consumers, and Kafka Streams topologies — with no Cucumber dependency.
 
 **What it gives you:**
-- Embedded Kafka broker lifecycle (Testcontainers-backed)
 - Fluent producer & consumer DSL via `ConsumerContext` / `ProducerContext`
 - Kafka Streams topology test harness
 - Rich message matchers: JSON file, XML, XPath, positional fields, key-only, batch

@@ -1,0 +1,48 @@
+# ============================================================
+# Reusable Dependency Review
+#
+# Runs on every PR targeting main. Blocks merges that introduce:
+#   • dependencies with known CVEs (severity ≥ moderate)
+#   • dependencies under non-permissive licences
+# ============================================================
+name: Reusable Dependency Review
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    name: 🔒 Dependency Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: moderate
+          comment-summary-in-pr: always
+          vulnerability-check: true
+          license-check: true
+          allow-licenses: >-
+            Apache-2.0,
+            MIT,
+            BSD-2-Clause,
+            BSD-3-Clause,
+            ISC,
+            LGPL-2.0-only,
+            LGPL-2.1-only,
+            LGPL-2.1-or-later,
+            EPL-1.0,
+            EPL-2.0,
+            CDDL-1.0,
+            CC0-1.0

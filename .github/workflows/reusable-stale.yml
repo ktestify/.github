@@ -1,0 +1,59 @@
+# ============================================================
+# Reusable Stale — auto-close inactive issues & PRs
+#
+# Issues  → stale after 60 days, closed after 14 more
+# PRs     → stale after 30 days, closed after 7 more
+#
+# Items labelled keep-open / security / pinned are exempt.
+# ============================================================
+name: Reusable Stale
+
+on:
+  workflow_call:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    name: 🕰️ Mark & close stale items
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/stale@v10
+        with:
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          stale-issue-label: "stale"
+          stale-issue-message: >
+            👋 This issue has been automatically marked as stale because it
+            has had no activity in the last 60 days.
+            It will be closed in 14 days if no further activity occurs.
+            If this is still relevant, please leave a comment or remove
+            the `stale` label.
+          close-issue-message: >
+            🔒 Closing this issue due to prolonged inactivity.
+            Feel free to reopen it if the problem resurfaces.
+
+          days-before-pr-stale: 30
+          days-before-pr-close: 7
+          stale-pr-label: "stale"
+          stale-pr-message: >
+            👋 This pull request has been automatically marked as stale
+            because it has had no activity in the last 30 days.
+            It will be closed in 7 days if no further activity occurs.
+            If work is still in progress, please push a commit or leave
+            a comment.
+          close-pr-message: >
+            🔒 Closing this pull request due to prolonged inactivity.
+            Please reopen it when you are ready to continue.
+
+          exempt-issue-labels: "keep-open,security,pinned,breaking-change"
+          exempt-pr-labels: "keep-open,security,pinned,work-in-progress"
+          exempt-all-milestones: true
+          remove-stale-when-updated: true
+          operations-per-run: 100

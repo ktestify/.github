@@ -108,7 +108,7 @@ integrated and ready to use with ktestify-cucumber out of the box.
 <tr>
 <td width="50%" valign="top">
 
-### 🛎️ [ktestify-plugin-notifications](https://github.com/ktestify/ktestify-notifications)
+### 🛎️ [ktestify-plugin-notifications](https://github.com/ktestify/ktestify-plugin-notifications)
 
 Cross-platform test suite notifications for **ktestify-cucumber**. Sends a rich summary card at the end of each test
 run, with per-tag group breakdowns, CI/Git context, and configurable success-rate thresholds.
@@ -379,9 +379,9 @@ And record should not appear in topic                     ← negative watcher
 
 | Repository                                                                                 | Status    | Version          |
 |--------------------------------------------------------------------------------------------|-----------|------------------|
-| [ktestify-core](https://github.com/ktestify/ktestify-core)                                 | 🟢 Active | `0.1.0`          |
-| [ktestify-cucumber](https://github.com/ktestify/ktestify-cucumber)                         | 🟢 Active | `0.1.3`          |
-| [ktestify-plugin-azureblob](https://github.com/ktestify/ktestify-plugin-azureblob)         | 🟢 Active | `0.0.1-SNAPSHOT` |
+| [ktestify-core](https://github.com/ktestify/ktestify-core)                                 | 🟢 Active | `0.1.1`          |
+| [ktestify-cucumber](https://github.com/ktestify/ktestify-cucumber)                         | 🟢 Active | `0.1.4`          |
+| [ktestify-plugin-azureblob](https://github.com/ktestify/ktestify-plugin-azureblob)         | 🟢 Active | `0.1.0`          |
 | [ktestify-plugin-notifications](https://github.com/ktestify/ktestify-plugin-notifications) | 🟢 Active | `0.1.0`          |
 
 ---

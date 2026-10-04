@@ -212,7 +212,7 @@ jobs:
       # ── Build, test & sign ────────────────────────────────
       - name: Build with release profile (compile + test + GPG sign)
         run: |
-          mvn verify -P release \
+          mvn verify -P release,integration-tests \
             --no-transfer-progress \
             -Dspotless.check.skip=true
         env:

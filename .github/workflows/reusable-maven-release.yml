@@ -51,8 +51,9 @@ on:
         description: "Whether to update shields.io version badge in README.md"
         type: boolean
         default: true
-    maven-version:
-        description: Maven version to publish with (3.10.0 breaks the Central bundle)
+      maven-version:
+        description: "Maven version to publish with (3.10.0 breaks the Central bundle)"
+        type: string
         required: false
         default: '3.9.16'
     secrets:

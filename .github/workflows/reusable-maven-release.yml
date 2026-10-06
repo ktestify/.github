@@ -263,47 +263,6 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Show Maven version
-        if: always()
-        run: mvn -v
-
-      - name: List bundle contents
-        if: always() && !inputs.dry-run
-        run: |
-          ls -la target/central-publishing/ || true
-          unzip -l target/central-publishing/central-bundle.zip || true
-          find target/central-staging -not -type d | sort || true
-
-      - name: Upload bundle for inspection
-        if: always() && !inputs.dry-run
-        uses: actions/upload-artifact@v4
-        with:
-          name: central-bundle
-          path: |
-            target/central-publishing/central-bundle.zip
-            target/central-staging/
-          include-hidden-files: true
-          if-no-files-found: warn
-
-      - name: List bundle contents
-        if: always() && !inputs.dry-run
-        run: |
-          ls -la target/central-publishing/ || true
-          unzip -l target/central-publishing/central-bundle.zip || true
-          find target/central-staging -not -type d | sort || true
-
-      - name: Upload bundle for inspection
-        if: always() && !inputs.dry-run
-        uses: actions/upload-artifact@v4
-        with:
-          name: central-bundle
-          path: |
-            target/central-publishing/central-bundle.zip
-            target/central-staging/
-          include-hidden-files: true
-          if-no-files-found: warn
-
-
       # ── Push container image (JIB) ────────────────────────
       - name: Publish Docker image to GHCR
         if: ${{ !inputs.dry-run && inputs.push-container }}

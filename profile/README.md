@@ -11,9 +11,11 @@
 
 <br/>
 
-**KTestify** is an open-source, modular testing framework for [Apache Kafka](https://kafka.apache.org/) and Kafka
-Streams. It lets you write expressive, reliable stream tests, from low-level message assertions using a fluent Java API,
-all the way up to full BDD scenarios described in plain Gherkin.
+**KTestify** is an open-source, modular framework for integration-testing
+[Apache Kafka](https://kafka.apache.org/) and Kafka Streams pipelines. Its
+transport-agnostic core provides message matching and a fluent Java API, while
+the standalone Cucumber runner lets you describe scenarios in Gherkin. Plugins
+extend those scenarios to integrations such as HTTP and Azure Blob Storage.
 
 ---
 
@@ -33,10 +35,11 @@ Cucumber dependency.
 - Fluent producer & consumer DSL via `ConsumerContext` / `ProducerContext`
 - Kafka Streams topology test harness
 - Rich message matchers: JSON file, XML, XPath, positional fields, key-only, batch
-- Full Avro support (Schema Registry, `GenericRecord` matching, excluded fields)
+- Avro support through Schema Registry, including `GenericRecord` matching and excluded fields
 - Dynamic variable system in payloads: `{{DATE:...}}`, `{{ENV:...}}`, `{{RANDOM:...}}`
 - HOCON configuration (`reference.conf` + environment variable overrides)
-- Transport-agnostic design, extensible `RecordFetcher<V>` contract
+- Separate transport contracts for streaming (`RecordFetcher<V>`) and synchronous
+  request/response (`RequestResponseClient<Req, V>`) integrations
 
 ```java
 ConsumerContext<String, String> ctx = ConsumerContext.<String, String>builder()
@@ -56,20 +59,26 @@ assertTrue(passed);
 
 ### 🥒 [ktestify-cucumber](https://github.com/ktestify/ktestify-cucumber)
 
-A **standalone BDD test runner**. Uses Cucumber 7 + Gherkin to express Kafka stream scenarios in plain language, backed
-by the ktestify-core API.
+A **standalone BDD test runner**. Uses Cucumber 7 and Gherkin to express Kafka
+scenarios in plain language, backed by the ktestify-core API. Run it with Docker
+or as a fat JAR; it is not an embeddable Cucumber library.
 
 **What it gives you:**
 
-- Ready-to-use Gherkin step definitions for every matching strategy
-- Scenario-scoped Kafka lifecycle (Testcontainers, no Docker Compose needed)
-- Avro and raw (JSON/XML/text) scenarios in the same suite
+- Ready-to-use Gherkin steps for record production and assertions
+- Raw and Avro scenarios, with key matching and positive or negative presence checks
+- Raw JSON, XML, and text alongside Avro scenarios in the same suite
 - Batch consumer assertions (`expectedRecordsCount`)
 - `consumerReadTimeout` and `consumerDeltaTime` per-scenario tuning
-- Shell script execution steps (`ScriptService`)
+- Shell script execution steps
 - Rich CI reports via [cucumber-reportr](https://github.com/nil-malh/cucumber-reportr)
 
+The runner connects to a Kafka test cluster that you provide. It does not start
+a broker for you.
+
 ```gherkin
+Feature: Order enrichment
+
 Background:
 Given namespace
 | namespace |
@@ -96,13 +105,15 @@ Then expected record from file
 
 ## Plugin Repositories
 
-KTestify provides a Plugin system based on SPI (Service Provider Interface) to allow third-party libraries to extend its
-capabilities without modifying the core codebase. Plugins can introduce new matchers, transport implementations, or
-orchestration strategies.
+KTestify plugins use the Service Provider Interface (SPI) to add integrations
+without modifying the core codebase. First-party plugins add transports and
+their own Gherkin steps, and are discovered automatically by the runner.
 
-You can learn more on how to create your own plugin in
-the [Plugin Development Guide](https://docs.ktestify.xyz/docs/extend/plugins). Below are first-party plugin that are
-integrated and ready to use with ktestify-cucumber out of the box.
+See the [Plugin Development Guide](https://docs.ktestify.xyz/docs/extend/plugins)
+to create a plugin. 
+
+These first-party plugins are ready to use with
+[ktestify-cucumber](https://github.com/ktestify/ktestify-cucumber).
 
 <table>
 <tr>
@@ -165,6 +176,30 @@ ktestify.plugins.azure-blob {
 
 </td>
 </tr>
+<tr>
+<td colspan="2" valign="top">
+
+### 🌐 [ktestify-plugin-http](https://github.com/ktestify/ktestify-plugin-http)
+
+Synchronous HTTP request/response support for **ktestify-cucumber**. Its
+Gherkin steps send requests and assert response status, headers, and bodies.
+The plugin uses the JDK HTTP client and is discovered automatically through
+SPI.
+
+```gherkin
+Given HTTP endpoint
+  | endpointAlias | baseUrl                   |
+  | orders-api    | http://localhost:8080/api |
+When HTTP request is sent
+  | endpointAlias | method | path   | file       | responseAlias |
+  | orders-api    | POST   | /orders | order.json | order-response |
+Then expected HTTP response status
+  | responseAlias  | statusCode |
+  | order-response | 200        |
+```
+
+</td>
+</tr>
 </table>
 
 ---
@@ -172,7 +207,8 @@ ktestify.plugins.azure-blob {
 ## Architecture
 
 KTestify enforces a strict three-layer separation so that transports, orchestration logic, and assertion strategies are
-completely decoupled. `ConsumedRecord<V>` is the **only data type that crosses layer boundaries**.
+completely decoupled. `ConsumedRecord<V>` is the **only data type that crosses layer boundaries**. The diagram below shows
+the Kafka record path; synchronous plugins such as HTTP use the request/response transport contract.
 
 ```mermaid
 flowchart TB
@@ -207,7 +243,7 @@ flowchart TB
             NOOP["NoOpRecordMatcher"]
         end
 
-        CR(["ConsumedRecord&lt;V&gt;\n— the only cross-layer type"])
+        CR(["ConsumedRecord&lt;V&gt;\n- the only cross-layer type"])
     end
 
     GS --> SD --> CVS
@@ -244,118 +280,84 @@ flowchart TB
 
 ## Quick Start
 
-### 1, Add the dependencies
+### 1. Prepare a test environment
 
-**ktestify-core**, embed the assertion API in your own test project:
+Use a dedicated Kafka test cluster, not a shared or production cluster.
+Configure Schema Registry as well if your tests use Avro. See the
+[CI environment guide](https://docs.ktestify.xyz/docs/getting-started/ci-environment)
+for setup details.
 
-```xml
-<dependency>
-    <groupId>io.github.ktestify</groupId>
-    <artifactId>ktestify-core</artifactId>
-    <version>0.1.0</version>
-    <scope>test</scope>
-</dependency>
-```
+### 2. Configure KTestify
 
-**ktestify-cucumber**, run BDD scenarios as a standalone test application:
-
-```xml
-<dependency>
-    <groupId>io.github.ktestify</groupId>
-    <artifactId>ktestify-cucumber</artifactId>
-    <version>0.1.3</version>
-    <scope>test</scope>
-</dependency>
-```
-
-### 2, Configure (HOCON)
-
-Drop an `application.conf` next to your features to override any default:
+Create an `application.conf` for the runner:
 
 ```hocon
 ktestify {
-  kafka.bootstrap-servers = "localhost:9092"
+  kafka.bootstrap-servers = "kafka:9092"
   kafka.topic-namespace = "my-app"
-  schema-registry.url = "http://localhost:8081"
+  schema-registry.url = "http://schema-registry:8081"
   framework.timeouts {
     default-read-timeout = 30s
     consumer-delta-time = 60s
   }
-  framework.directories.assets = "src/test/resources/data"
+  framework.directories.assets = "/workspace/assets"
 }
 ```
 
-All values can also be set via environment variables (`KTESTIFY_KAFKA_BOOTSTRAP_SERVERS`,
-`KTESTIFY_SCHEMA_REGISTRY_URL`, `KTESTIFY_TOPIC_NAMESPACE`, `KTESTIFY_ASSETS_DIR`, …).
+See the [configuration reference](https://docs.ktestify.xyz/docs/getting-started/configuration)
+for defaults and environment variable names.
 
-### 3, Run your scenarios
+### 3. Run your scenarios
 
-Via Maven (integration-tests profile):
-
-```bash
-mvn verify -Pintegration-tests -Dcucumber.it.tags="@integration"
-```
-
-Or directly as a fat-JAR:
+The recommended way to run a suite is with Docker:
 
 ```bash
-java -Dconfig.file=docker/local.conf \
-     -jar target/ktestify-cucumber.jar \
-     --tags "@integration" \
-     --plugin "json:target/cucumber-reports/cucumber.json" \
-     src/test/resources/features
+docker run --rm \
+  -v "$(pwd)/features:/workspace/features" \
+  -v "$(pwd)/assets:/workspace/assets" \
+  -v "$(pwd)/config:/workspace/config" \
+  ghcr.io/ktestify/ktestify-cucumber:latest \
+  --config /workspace/config/application.conf \
+  /workspace/features
 ```
+
+The Kafka address must be reachable from the container. The runner is also
+available as a fat JAR. See the
+[installation guide](https://docs.ktestify.xyz/docs/getting-started/installation)
+for configuration-file, report, and tag-filtering examples.
 
 ---
 
-## The Gherkin DSL, at a glance
+## Gherkin steps at a glance
 
-### Background (setup)
-
-```gherkin
-Given namespace          | namespace  |  → declare topic namespace
-Given input topic        | topicName | topicAlias | namespace |  → INPUT topic
-Given output topic       | topicName | topicAlias |           |  → OUTPUT topic
-Given schema             | schemaName | schemaAlias | schemaVersion |  → Avro schema
-Given assets directory   | absolutePath |  → base path for payload files
-```
-
-### Actions (`@When`)
+The runner includes Kafka setup, producer, and consumer steps. This example
+shows valid DataTables for a raw record roundtrip:
 
 ```gherkin
+Given input topic
+  | topicName  | topicAlias | namespace | namespaceAlias |
+  | orders-in  | orders-in  |           |                |
+Given output topic
+  | topicName   | topicAlias | namespace | namespaceAlias |
+  | orders-out  | orders-out |           |                |
+Given assets directory
+  | absolutePath                  |
+  | src/test/resources/assets     |
+
 When record from file is sent
-| topicName | file | recordKey | headerFile |
-
-When record from file based on schema is sent
-| topicName | file | schemaName | recordKey |
-
-And wait for {int} seconds
-
-When script is executed
-| scriptPath | scriptArgs |
-```
-
-### Validations (`@Then` / `@And`)
-
-```gherkin
+  | topicName | file        | recordKey |
+  | orders-in | order.json  | order-123 |
 Then expected record from file
-| topicAlias | file | expectedRecordKey | consumerReadTimeout | consumerDeltaTime |
-
-Then expected record from file based on XML
-| topicAlias | file | excludedElements |
-
-Then expected record based on XML should have fields matching from file
-| topicAlias | file | xpathExpressions |
-
-Then expected records from files                          ← batch
-| topicAlias | expectedRecordsCount | files | consumerReadTimeout |
-
-Then expected record from file based on schema            ← Avro
-| topicAlias | file | excludedKeys |
-
-And record should not appear in topic                     ← negative watcher
-| topicAlias | topicType | consumerReadTimeout | consumerDeltaTime |
+  | topicAlias | file                  | expectedRecordKey |
+  | orders-out | expected/order.json   | order-123         |
 ```
+
+Other built-in Kafka validations include positional fields, XML, XPath,
+Avro, batch comparisons, and positive or negative record-presence checks.
+Key matching supports exact, contains, starts-with, ends-with, and regular
+expression strategies. See the
+[complete step reference](https://docs.ktestify.xyz/docs/write-tests/step-reference)
+for all step phrases and DataTable columns.
 
 ---
 
@@ -369,20 +371,19 @@ And record should not appear in topic                     ← negative watcher
 | XML / XPath matchers          |    ✅     |          ❌          |       ❌       |
 | Batch record assertions       |    ✅     |          ❌          |       ❌       |
 | Dynamic variables in payloads |    ✅     |          ❌          |       ❌       |
-| Embedded broker lifecycle     |    ✅     |      ⚠️ manual      |       ✅       |
+| Requires a separate test broker |  ✅  |          ✅          |       ❌       |
 | Transport-agnostic design     |    ✅     |          ❌          |       ❌       |
 | CI-friendly                   |    ✅     |          ✅          |       ✅       |
 
 ---
 
-## Project Status
+## Documentation and developer resources
 
-| Repository                                                                                 | Status    | Version          |
-|--------------------------------------------------------------------------------------------|-----------|------------------|
-| [ktestify-core](https://github.com/ktestify/ktestify-core)                                 | 🟢 Active | `0.1.1`          |
-| [ktestify-cucumber](https://github.com/ktestify/ktestify-cucumber)                         | 🟢 Active | `0.1.4`          |
-| [ktestify-plugin-azureblob](https://github.com/ktestify/ktestify-plugin-azureblob)         | 🟢 Active | `0.1.0`          |
-| [ktestify-plugin-notifications](https://github.com/ktestify/ktestify-plugin-notifications) | 🟢 Active | `0.1.0`          |
+- [Full documentation](https://docs.ktestify.xyz/)
+- [Parent POM and dependency BOM](https://github.com/ktestify/ktestify-parent)
+- [Maven archetype](https://github.com/ktestify/ktestify-plugin-archetype) for
+  creating plugins
+- [Documentation site source](https://github.com/ktestify/ktestify-doc)
 
 ---
 
@@ -391,8 +392,8 @@ And record should not appear in topic                     ← negative watcher
 Contributions are welcome! Please read the contributing guide in each repository before opening a pull request.
 
 1. Fork the repository
-2. Create a feature branch : `git checkout -b feat/my-feature`
-3. Commit using [Conventional Commits](https://www.conventionalcommits.org/) : `git commit -m 'feat: add my feature'`
+2. Create a feature branch: `git switch -c feat/my-feature`
+3. Commit using [Conventional Commits](https://www.conventionalcommits.org/): `git commit -m 'feat: add my feature'`
 4. Push and open a Pull Request against `main`
 
 ---

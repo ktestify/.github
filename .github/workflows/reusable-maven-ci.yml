@@ -21,7 +21,7 @@ jobs:
     name: Validate PR title
     # In a reusable workflow, github.event_name is the caller's event,
     # so this job only runs when the caller was triggered by a PR.
-    if: ${{ github.event_name == 'pull_request' }} && ${{ github.event.action == 'opened' || github.event.action == 'edited' || github.event.action == 'synchronize' }}
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

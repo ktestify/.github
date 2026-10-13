@@ -17,6 +17,22 @@ on:
         default: ""
 
 jobs:
+  validate-pr-title:
+    name: Validate PR title
+    # In a reusable workflow, github.event_name is the caller's event,
+    # so this job only runs when the caller was triggered by a PR.
+    if: ${{ github.event_name == 'pull_request' }} && ${{ github.event.action == 'opened' || github.event.action == 'edited' || github.event.action == 'synchronize' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    steps:
+      - name: PR Conventional Commit Validation
+        uses: ytanikin/pr-conventional-commits@1.5.2
+        with:
+          task_types: '["feat","fix","docs","test","ci","refactor","perf","chore","revert","deps","style"]'
+          add_label: 'false'
+
   build:
     name: Build & Test (Java ${{ inputs.java-version }})
     runs-on: ubuntu-latest

@@ -11,6 +11,8 @@
 #   release-candidate → 0.1.3-SNAPSHOT  →  0.1.3-rc.1  →  0.1.3-SNAPSHOT (unchanged)
 #                       (auto-increments rc.N from existing git tags)
 #
+# Publish order: Docker image (GHCR, optional) → Maven Central
+#
 # Required secrets (set as org or repo secrets):
 #   KTESTIFY_CHANGELOG_PAT — PAT with repo scope for git push & tagging
 #   CENTRAL_USERNAME       — Maven Central Portal username token
@@ -250,20 +252,7 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
-      # ── Publish to Maven Central ──────────────────────────
-      - name: Publish to Maven Central
-        if: ${{ !inputs.dry-run }}
-        run: |
-          mvn deploy -P release \
-            --no-transfer-progress \
-            -DskipTests \
-            -Dspotless.check.skip=true
-        env:
-          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-
-      # ── Push container image (JIB) ────────────────────────
+      # ── 1. Push container image (JIB) ─────────────────────
       - name: Publish Docker image to GHCR
         if: ${{ !inputs.dry-run && inputs.push-container }}
         run: |
@@ -286,6 +275,19 @@ jobs:
             echo "| ${{ steps.semver.outputs.release-version }} | ${{ inputs.container-image }}:${{ steps.semver.outputs.release-version }} |"
             echo "| latest | ${{ inputs.container-image }}:latest |"
           } >> "${GITHUB_STEP_SUMMARY}"
+
+      # ── 2. Publish to Maven Central ───────────────────────
+      - name: Publish to Maven Central
+        if: ${{ !inputs.dry-run }}
+        run: |
+          mvn deploy -P release \
+            --no-transfer-progress \
+            -DskipTests \
+            -Dspotless.check.skip=true
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       # ── Commit, tag & push ────────────────────────────────
       - name: Commit release version, tag & push
@@ -410,4 +412,3 @@ jobs:
           echo ""
           echo "📋 Release notes preview:"
           cat RELEASE_NOTES_DRYRUN.md
-

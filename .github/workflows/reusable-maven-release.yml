@@ -107,7 +107,7 @@ jobs:
 
       - name: Cache Maven ${{ inputs.maven-version }}
         id: maven-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.maven-dist/apache-maven-${{ inputs.maven-version }}
           key: apache-maven-${{ inputs.maven-version }}
